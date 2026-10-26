@@ -118,7 +118,7 @@ test('归档保留 Markdown 原文，写入失败时阻止清理旧 Release', ()
 test('草稿、未完整上传、正式版和查询失败均不触发测试版清理', () => {
   for (const state of [
     { isDraft: true, isPrerelease: true, assetCount: 13 },
-    { isDraft: false, isPrerelease: true, assetCount: 11 },
+    { isDraft: false, isPrerelease: true, assetCount: 10 },
     { isDraft: false, isPrerelease: false, assetCount: 13 },
   ]) {
     let queries = 0;
@@ -203,7 +203,7 @@ test('版本脚本在隔离目录同步六个文件，并保持无参数 beta �
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('产物收集需要全部十二个平台包，缺失或重复时失败', () => {
+test('产物收集需要全部十个桌面/苹果包，Android 产物可选，缺失或重复时失败', () => {
   const root = mkdtempSync(join(tmpdir(), 'coolapk-beta-assets-'));
   const version = '1.31.0-beta.101';
   const names = [
@@ -222,9 +222,31 @@ test('产物收集需要全部十二个平台包，缺失或重复时失败', ()
     const result = run();
     assert.equal(result.status, 0, result.stderr);
     assert.ok(readFileSync(join(root, 'beta-notes.md'), 'utf8').includes('### 优化\n- 示例更新日志'));
+    // Android 产物存在时一并向发布目录归集（10 个必需 + 2 个可选）
     assert.equal(readFileSync(join(root, 'beta-release/SHA256SUMS'), 'utf8').trim().split('\n').length, 12);
     mkdirSync(join(root, 'beta-artifacts/duplicate'));
     writeFileSync(join(root, 'beta-artifacts/duplicate', names[0]), 'fixture');
     assert.notEqual(run().status, 0);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('产物收集在 Android 包缺失时仍通过（未配置签名 Secrets 的 fork 跳过 Android）', () => {
+  const root = mkdtempSync(join(tmpdir(), 'coolapk-beta-assets-noandroid-'));
+  const version = '1.31.0-beta.101';
+  const names = [
+    ...['x64-setup.exe', 'arm64-setup.exe', 'x64-portable.exe', 'arm64-portable.exe', 'x64.dmg', 'aarch64.dmg', 'amd64.AppImage', 'amd64.deb'].map((suffix) => `coolapk-desktop_${version}_${suffix}`),
+    `coolapk-desktop-${version}-1.x86_64.rpm`,
+    `coolapk-v${version}-ios-arm64-unsigned.ipa`,
+  ];
+  const run = () => spawnSync(process.execPath, [resolve('scripts/collect-beta-assets.mjs')], {
+    cwd: root, encoding: 'utf8', env: { ...process.env, BETA_VERSION: version, RELEASE_NOTES: '' },
+  });
+  try {
+    mkdirSync(join(root, 'beta-artifacts'));
+    for (const name of names) writeFileSync(join(root, 'beta-artifacts', name), 'fixture');
+    const result = run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(readFileSync(join(root, 'beta-release/SHA256SUMS'), 'utf8').trim().split('\n').length, 10);
+    assert.ok(readFileSync(join(root, 'beta-notes.md'), 'utf8').includes('iOS 提供未签名 IPA'));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

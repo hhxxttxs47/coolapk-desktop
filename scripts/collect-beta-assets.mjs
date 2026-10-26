@@ -20,14 +20,26 @@ const required = [
   `${desktop}_(?:x64|x86_64)\\.dmg`, `${desktop}_(?:aarch64|arm64)\\.dmg`,
   `${desktop}_(?:amd64|x86_64)\\.AppImage`, `${desktop}_(?:amd64|x86_64)\\.deb`,
   `${desktop}-\\d+\\.x86_64\\.rpm`,
-  `coolapk-v${escaped}-android-arm64\\.apk`, `coolapk-v${escaped}-android-arm64\\.aab`,
   `coolapk-v${escaped}-ios-arm64-unsigned\\.ipa`,
+];
+// Android 产物可选：fork 未配置签名 Secrets 时跳过 Android 构建，其余平台照常发布。
+const optional = [
+  `coolapk-v${escaped}-android-arm64\\.apk`,
+  `coolapk-v${escaped}-android-arm64\\.aab`,
 ];
 mkdirSync('beta-release', { recursive: true });
 const checksums = [];
 for (const pattern of required) {
   const matches = files.filter((path) => new RegExp(`^${pattern}$`, 'i').test(basename(path)));
   if (matches.length !== 1) throw new Error(`更新包缺失或重复：${pattern}（${matches.length}）`);
+  const name = basename(matches[0]);
+  copyFileSync(matches[0], join('beta-release', name));
+  checksums.push(`${createHash('sha256').update(readFileSync(matches[0])).digest('hex')}  ${name}`);
+}
+for (const pattern of optional) {
+  const matches = files.filter((path) => new RegExp(`^${pattern}$`, 'i').test(basename(path)));
+  if (matches.length > 1) throw new Error(`更新包重复：${pattern}（${matches.length}）`);
+  if (matches.length === 0) continue;
   const name = basename(matches[0]);
   copyFileSync(matches[0], join('beta-release', name));
   checksums.push(`${createHash('sha256').update(readFileSync(matches[0])).digest('hex')}  ${name}`);
