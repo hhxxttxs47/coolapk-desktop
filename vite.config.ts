@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
+﻿import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { androidIconSvgPlugin } from './scripts/icon-svg-plugin.ts';
+import { androidIconSvgPlugin } from './scripts/icon-svg-plugin';
 
 export default defineConfig({
   plugins: [vue(), androidIconSvgPlugin()],
@@ -9,19 +9,13 @@ export default defineConfig({
     host: process.env.TAURI_DEV_HOST || '127.0.0.1',
     port: 17520,
     strictPort: true,
-    watch: {
-      // 避免 Windows 下 Vite 监听正在编译中的 Rust target 产生 EBUSY 文件锁报错
-      ignored: ['**/src-tauri/**'],
-    },
   },
   envPrefix: ['VITE_', 'TAURI_'],
   build: {
-    // Tauri 会把整个 dist 嵌入可执行文件，必须清空旧的哈希资源，避免单文件持续膨胀。
-    emptyOutDir: true,
+    // Tauri 浼氭妸鏁翠釜 dist 宓屽叆鍙墽琛屾枃浠讹紝蹇呴』娓呯┖鏃х殑鍝堝笇璧勬簮锛岄伩鍏嶅崟鏂囦欢鎸佺画鑶ㄨ儉銆?    emptyOutDir: true,
     target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
     minify: !process.env.TAURI_DEBUG ? 'oxc' : false,
     sourcemap: !!process.env.TAURI_DEBUG,
-    // 当前桌面端将页面与 Font Awesome 资源合并为单一主包，允许其在 Tauri 单文件场景下保持完整。
-    chunkSizeWarningLimit: 2500,
+    // 褰撳墠妗岄潰绔皢椤甸潰涓?Font Awesome 璧勬簮鍚堝苟涓哄崟涓€涓诲寘锛屽厑璁稿叾鍦?Tauri 鍗曟枃浠跺満鏅笅淇濇寔瀹屾暣銆?    chunkSizeWarningLimit: 2500,
   },
 });
